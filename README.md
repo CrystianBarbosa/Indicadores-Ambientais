@@ -1,3 +1,5 @@
 # Indicadores Ambientais
 
-O painel de licenças e condicionantes ambientais foi movido para o portal com login no claude.ai. Este repositório não guarda mais os dados do painel; o site aqui só aponta para o portal.
+Painel de licenças e condicionantes ambientais, protegido por e-mail e código de acesso.
+
+Os dados deste site estão criptografados (AES-GCM). Sem um e-mail e código válidos, eles não podem ser lidos, nem pelo código-fonte da página nem pelo repositório. Os acessos são gerados pela equipe Demarco a partir da planilha de usuários e publicados com o arquivo "Atualizar e publicar painel.bat".
