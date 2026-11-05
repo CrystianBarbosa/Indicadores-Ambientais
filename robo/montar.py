@@ -1,7 +1,8 @@
 """Atualiza os dados a partir das planilhas e gera os painéis HTML autônomos.
 
 Uso: python montar.py
-Saída: "Painel Indicadores Ambientais.html" (Modelo B, tema Claro) na pasta "5. Painel Indicadores Ambientais".
+Saída: "Painel Indicadores Ambientais.html" na pasta "5. Painel Indicadores Ambientais" = atalho para o portal
+(com login). A versão aberta (Modelo B, tema Claro, sem login) vai para _fonte/local/ só para conferência.
 """
 import base64
 import os
@@ -147,18 +148,34 @@ def montar_html(script_dados):
             .replace("/*__DADOS__*/", script_dados).replace("/*__NUCLEO__*/", nucleo_fn))
 
 
+SITE_URL = "https://crystianbarbosa.github.io/Indicadores-Ambientais/"
+# versão aberta (sem login, com os dados legíveis) só para conferência local; fica dentro de _fonte
+PASTA_LOCAL = os.path.join(AQUI, "local")
+ATALHO = f"""<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Indicadores Ambientais</title><meta http-equiv="refresh" content="0;url={SITE_URL}">
+<style>body{{margin:0;min-height:100vh;display:grid;place-items:center;background:#f4f7fc;color:#0d1b3d;font:16px system-ui,sans-serif}}a{{color:#1d4ed8}}</style>
+</head><body><p>Abrindo o portal Indicadores Ambientais… <a href="{SITE_URL}">clique aqui se não abrir</a>.</p>
+<script>location.replace({SITE_URL!r});</script></body></html>
+"""
+
+
 def main():
     extrair_dados.main()
     dados_json = ler("dados.json")
     html = montar_html("window.__DADOS__=" + dados_json.replace("</", "<\\/") + ";")
+    # na pasta do painel fica só o atalho para o portal (com login)
     with open(os.path.join(DESTINO, SAIDA_FINAL), "w", encoding="utf-8") as f:
+        f.write(ATALHO)
+    print("gerado:", SAIDA_FINAL, "(atalho para o portal)")
+    os.makedirs(PASTA_LOCAL, exist_ok=True)
+    with open(os.path.join(PASTA_LOCAL, "Painel aberto (sem login).html"), "w", encoding="utf-8") as f:
         f.write(html)
-    print("gerado:", SAIDA_FINAL)
     # versão do portal no claude.ai (com login) e o arquivo de dados para enviar pela aba Usuários
     os.makedirs(os.path.join(AQUI, "portal"), exist_ok=True)
     with open(os.path.join(AQUI, "portal", "painel.html"), "w", encoding="utf-8") as f:
         f.write(para_portal(html))
-    with open(os.path.join(DESTINO, ARQ_DADOS), "w", encoding="utf-8") as f:
+    with open(os.path.join(PASTA_LOCAL, ARQ_DADOS), "w", encoding="utf-8") as f:
         f.write(dados_json)
     print("gerado:", ARQ_DADOS)
 
