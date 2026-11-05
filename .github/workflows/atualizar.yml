@@ -5,7 +5,7 @@ name: Atualizar painel
 on:
   push:
     branches: [main]
-    paths: ['entradas/**']
+    paths: ['entradas/**', 'robo/**']
   workflow_dispatch:
 
 permissions:

@@ -9,6 +9,7 @@ import base64
 import gzip
 import json
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -23,11 +24,34 @@ SITE = os.path.join(REPO, "index.html")
 OAEP = padding.OAEP(mgf=padding.MGF1(hashes.SHA256()), algorithm=hashes.SHA256(), label=None)
 
 
+def erro(texto):
+    # "::error::" vira anotação visível na página da execução, sem precisar abrir o log
+    print(f"::error::{texto}", flush=True)
+    raise SystemExit(1)
+
+
 def chave_privada():
     pem = os.environ.get("PAINEL_CHAVE_PRIVADA", "").strip()
     if not pem:
-        raise SystemExit("ERRO: falta o secret PAINEL_CHAVE_PRIVADA no repositório (Settings > Secrets and variables > Actions).")
-    return serialization.load_pem_private_key(pem.encode(), password=None)
+        erro("Falta o secret PAINEL_CHAVE_PRIVADA no repositório (Settings > Secrets and variables > Actions).")
+    # aceita a chave colada sem quebras de linha (ou com espaços no lugar delas)
+    corpo = re.sub(r"-----[^-]+-----|\s", "", pem)
+    linhas = "\n".join(corpo[i:i + 64] for i in range(0, len(corpo), 64))
+    tentativas = [pem] + [f"-----BEGIN {t}-----\n{linhas}\n-----END {t}-----\n" for t in ("PRIVATE KEY", "RSA PRIVATE KEY")]
+    priv = None
+    for t in tentativas:
+        try:
+            priv = serialization.load_pem_private_key(t.encode(), password=None)
+            break
+        except Exception:
+            pass
+    if priv is None:
+        erro("O secret PAINEL_CHAVE_PRIVADA não é uma chave privada válida. Cole o arquivo inteiro, de BEGIN até END.")
+    publica = open(os.path.join(AQUI, "chave_publica_robo.pem"), "rb").read()
+    fmt = dict(encoding=serialization.Encoding.DER, format=serialization.PublicFormat.SubjectPublicKeyInfo)
+    if priv.public_key().public_bytes(**fmt) != serialization.load_pem_public_key(publica).public_bytes(**fmt):
+        erro("O secret PAINEL_CHAVE_PRIVADA não é o par da chave pública do painel (robo/chave_publica_robo.pem).")
+    return priv
 
 
 def abrir_planilha(priv, arquivo, pasta):
@@ -73,9 +97,16 @@ def main():
     import publicar
     publicar.ler_usuarios = lambda dados: lista  # a lista oficial é a do site
     if publicar.main() is None:
-        raise SystemExit("ERRO ao gerar o painel.")
+        erro("O gerador do painel parou sem gerar o site (veja o log da etapa Gerar o painel).")
     shutil.rmtree(trabalho, ignore_errors=True)
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except SystemExit:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        erro(f"Falha ao gerar o painel: {type(e).__name__}: {str(e)[:300]}")
